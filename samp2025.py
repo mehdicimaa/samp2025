@@ -8,7 +8,7 @@ from Crypto.Cipher import AES
 
 # 0x0. Advanced Configuration
 THREADS = 45000  # زيادة عدد الثريدات
-AES_KEY = b'ThisIsASecretKey1337'  # مفتاح أقوى
+AES_KEY = b'ThisIsASecretKey'  # مفتاح أقوى
 
 class SAMPocalypsePro:
     def __init__(self, target_ip, port):
